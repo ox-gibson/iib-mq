@@ -1,0 +1,11 @@
+---
+- name: Copy files to /usr/local/bin
+  hosts: "{{ varHosts }}"
+  tasks:
+    - name: "Copy file - {{ file }}"
+      copy:
+        src: "{{ file }}"
+        dest: "{{ remLoc }}"
+        owner: "{{ own }}"
+        group: "{{ grp }}"
+        mode: "{{ mode }}"

@@ -1,0 +1,6 @@
+---
+- name: Clean High Availability Testing
+  hosts: "{{ varHosts }}"
+  tasks:
+    - name: Run script to clean up high availability testing
+      command: "cleanHA.sh"

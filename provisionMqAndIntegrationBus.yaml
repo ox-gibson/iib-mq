@@ -1,0 +1,124 @@
+---
+- name: Install packages
+  hosts: "{{ varHosts }}" 
+  tasks:
+    - name: required packages are present
+      yum:
+        name:
+          - bash 
+          - bc
+          - ca-certificates
+          - coreutils
+          - curl
+          - file
+          - findutils
+          - gawk
+          - glibc-common
+          - grep
+          - passwd
+          - procps-ng
+          - sed
+          - tar
+          - vim
+          - psmisc
+          - util-linux
+        state: present
+
+- name: Installing MQ
+  hosts: "{{ varHosts }}" 
+  tasks: 
+    - name: Create /tmp/mq
+      command: "mkdir -p /tmp/mq" 
+    - name: Download MQ Binaries to /iibdata
+#      shell: "wget -O /iibdata/{{ varMQVer }} https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqadv/{{ varMQVer }}"
+      shell: "wget -O /tmp/mq/{{ varMQVer }} https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqadv/{{ varMQVer }}"
+    - name: Extracting MQ binaries
+#      shell: "tar -Uzxvf /iibdata/{{ varMQVer }} -C /tmp/mq/"
+      shell: "tar -Uzxvf /tmp/mq/{{ varMQVer }} -C /tmp/mq/"
+    - name: add mqm group
+      command: 'groupadd --system --gid 980 mqm'
+    - name: Create mqm user and add root user to mqm
+      shell: 'useradd --system --uid 980 --gid mqm --create-home --home-dir /home/mqm mqm; usermod -aG mqm root'
+    - name: Accept License
+      shell: '/tmp/mq/MQServer/mqlicense.sh -text_only -accept'
+    - name: Install MQSeriesRuntime (1 of 8)
+      command: "rpm -ivh /tmp/mq/MQServer/MQSeriesRuntime-*.rpm"
+    - name: Install MQSeriesServer (2 0f 8)
+      command: "rpm -ivh /tmp/mq/MQServer/MQSeriesServer-*.rpm"
+    - name: Install MQSeriesJava (3 of 8)
+      command: "rpm -ivh /tmp/mq/MQServer/MQSeriesJava*.rpm"
+    - name: Install MQSeriesJRE (4 0f 8)
+      command: "rpm -ivh /tmp/mq/MQServer/MQSeriesJRE*.rpm"
+    - name: Install MQSeriesGSKit (5 of 8)
+      command: "rpm -ivh /tmp/mq/MQServer/MQSeriesGSKit*.rpm"
+    - name: Install MQSeriesMsg (6 of 8)
+      command: "rpm -ivh /tmp/mq/MQServer/MQSeriesMsg*.rpm"
+    - name: Install MQSeriesSamples (7 of 8)
+      command: "rpm -ivh /tmp/mq/MQServer/MQSeriesSamples*.rpm"
+    - name: Install MQSeriesAMS (8 of 8)
+      command: "rpm -ivh /tmp/mq/MQServer/MQSeriesAMS-*.rpm"
+#    - name: Update yum
+#      command: "yum -y update"
+    - name: Removing tar.gz files from /opt/mqm
+      command: "find /opt/mqm/ -name '*.tar.gz' -delete"
+    - name: Set the default MQ path
+      command: "/opt/mqm/bin/setmqinst -i -p /opt/mqm/"
+    - name: Run script to update .bash_profile 
+      command: "updateBP.sh"
+    - name: Call Display MQ Version
+      command: "dspmqver"
+      register: VER
+    - debug: 
+        var: VER.stdout_lines
+    - name: Clean Yum
+      command: "yum -y clean all"
+    - name: Clean Yum cache
+      command: "rm -rf /var/cache/yum/*"
+    - name: Clean download files
+      command: "rm -rf /tmp/mqm"
+
+- name: Installing IIB
+  hosts: "{{ varHosts }}" 
+  tasks: 
+    - name: Create /tmp/iib
+      command: "mkdir -p /tmp/iib "
+    - name: Create /opt/ibm
+      command: "mkdir -p /opt/ibm"
+    - name: Download IIB Binaries to /iibdata
+#      shell: "wget -O /iibdata/{{ varIIBVer }} http://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/integration/{{ varIIBVer }}"
+      shell: "wget -O /tmp/iib/{{ varIIBVer }} http://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/integration/{{ varIIBVer }}"
+    - name: Extracting IIB binaries
+#      command: "tar -Uzxvf /iibdata/{{ varIIBVer }} -C /opt/ibm/"
+      command: "tar -Uzxvf /tmp/iib/{{ varIIBVer }} -C /opt/ibm/"
+    - name: Accepting IIB license
+      command: '/opt/ibm/iib-10.0.0.15/iib make registry global accept license silently'
+    - name: Verify Install
+      command: '/opt/ibm/iib-10.0.0.15/iib verify all'
+      register: VERIFY
+    - debug: 
+        var: VERIFY.stdout_lines
+    - name: Verify version
+      command: '/opt/ibm/iib-10.0.0.15/iib version'
+      register: VERSION
+    - debug: 
+        var: VERSION.stdout_lines
+    - name: Clean up install files
+      command: "rm -rf /tmp/iib*"
+
+- name: Configure IIB
+  hosts: "{{ varHosts }}" 
+  tasks:
+    - name: Add wheel permissions to sudoers file
+      command: "sed -i 's@# %wheel@%wheel@' /etc/sudoers"
+    - name: Create user
+      command: "useradd iibuser --create-home --home-dir /home/iibuser"
+    - name: Set iibuser password
+      command: "echo -e \"iibuser\niibuser\" | passwd iibuser"
+    - name: Create mqclient group
+      command: "groupadd -f mqclient"
+    - name: Add iibuser to groups
+      command: "usermod -aG mqbrkrs,mqm,mqclient,wheel iibuser"
+    - name: Add root to groups
+      command: "usermod -aG mqbrkrs,mqclient root"
+    - name: Run script to chown 
+      command: "chown.sh"

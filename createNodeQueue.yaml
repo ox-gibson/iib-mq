@@ -1,0 +1,24 @@
+---
+# Params:
+#   node - Integration Node name 
+#   queue - Queue Manager name
+#   eGroup - Execution Group name
+#   port - Port number to be used
+#   barPath - Path to the bar file to include bar file name
+
+- name: Test IIB/MQ 
+  hosts: "{{ varHosts }}"
+  tasks:
+    - name: Run test script with parameters 
+      command: "createNodeQueue.sh {{ node }} {{ queue }} {{ eGroup }} {{ iPort }} {{ lPort }}"
+      ignore_errors: true
+
+- name: Get URLs
+  hosts: "{{ varHosts }}"
+  tasks:
+    - name: Get URLs
+      shell: "source /opt/ibm/iib-10.0.0.15/server/bin/mqsiprofile; mqsilist | grep http | awk -F\" \" '{print $4,$9,$13}'" 
+      register: URL
+
+    - debug: 
+        var: URL.stdout_lines
