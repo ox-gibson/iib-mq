@@ -1,0 +1,8 @@
+---
+- name: High Availability Testing
+  hosts: "{{ varHosts }}"
+  tasks:
+    - name: Run script to setup and test high availability 
+      command: "testHA.sh"
+    - name: Copy log file here
+      command: "scp /var/log/HA.log root@ocpbaston01:/var/log/"

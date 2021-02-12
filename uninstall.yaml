@@ -1,0 +1,78 @@
+---
+- name: Clean up Brokers and Queues
+  import_playbook: "removeNode-Queue.yaml -e varHosts={{ varHosts }}"
+
+- name: Uninstall IIB
+  hosts: "{{ varHosts }}" 
+  tasks:
+    - name: Kill iibuser processes
+      shell: "if `ps -elf | grep iibuser | grep -v grep`; then `killall -u iibuser`; fi"
+    - name: Kill iibmquser processes
+      shell: "if `ps -elf | grep iibmquser | grep -v grep`; then `killall -u iibmquser`; fi" 
+    - name: Delete iibuser
+      shell: "if `grep -q iibuser /etc/passwd`; then `userdel --remove iibuser`; fi" 
+    - name: Delete iibmquser
+      shell: "if `grep -q iibmquser /etc/passwd`; then `userdel --remove iibmquser`; fi" 
+    - name: Remove root from mqbrkrs group
+      shell: 'if `grep -q mqbrkrs | grep root /etc/passwd`; then `gpasswd -d root mqbrkrs`; fi'
+    - name: Remove root from mqclient group
+      shell: 'if `grep -q mqclient | grep root /etc/passwd`; then `gpasswd -d root mqclient`; fi'
+    - name: Remove mqbrkrs group
+      shell: 'if `grep -q mqbrkrs /etc/group`; then `groupdel mqbrkrs`; fi'
+    - name: Remove iibuser group
+      shell: 'if `grep -q iibuser /etc/group`; then `groupdel iibuser`; fi'
+    - name: Removing License variable from .bash_profile
+      command: 'sed -i "/export LICENSE=accept/d" ~/.bash_profile'
+      ignore_errors: yes
+    - name: Removing iib path from .bash_profile
+      command: 'sed -i "s@:/opt/ibm/iib-.*/server/bin@@g" /root/.bash_profile'
+      ignore_errors: yes
+    - name: Removing mqm source from .bash_profile
+      command: 'sed -i "/source/d" /root/.bash_profile'
+      ignore_errors: yes
+#    - name: Removing IIB source from .bash_profile
+#      command: 'sed -i "@source@d" /root/.bash_profile'
+#      ignore_errors: yes
+    - name: Removing download directories 
+      command: 'rm -rf /tmp/iib*; rm -rf /home/iibmquser; rm -rf /var/log/syslog; rm -rf /var/mqsi'
+      ignore_errors: yes
+    - name: Resetting firewall
+      shell: "iptables -P INPUT ACCEPT; iptables -P FORWARD ACCEPT; iptables -P OUTPUT ACCEPT; iptables -t nat -F; iptables -t mangle -F; iptables -F; iptables -X; iptables-save"
+      ignore_errors: yes
+    - name: Remove git repository
+      command: 'rm -rf ~/iib-mq'
+      ignore_errors: yes
+    - name: Remove /opt/ibm 
+      command: 'rm -rf /opt/ibm'
+      ignore_errors: yes
+
+- name: Uninstall MQ
+  hosts: "{{ varHosts }}" 
+  tasks:
+    - name: Kill mqm user processes
+      shell: "if `ps -elf | grep mqm | grep -v grep`; then `killall -u mqm`; fi"
+    - name: Delete mqm user 
+      shell: "if `grep -q mqm /etc/passwd`; then `userdel --remove mqm`; fi" 
+    - name: Remove root from mqm group
+      shell: 'if `grep -q mqm | grep root /etc/passwd`; then `gpasswd -d root mqm`; fi'
+    - name: Remove root from mqclient group
+      shell: 'if `grep -q mqclient | grep root /etc/passwd`; then `gpasswd -d root mqclient`; fi'
+    - name: Delete mqm group
+      shell: 'if `grep -q mqm /etc/group`; then `groupdel mqm`; fi'
+    - name: Delete mqclient group
+      shell: 'if `grep -q mqclient /etc/group`; then `groupdel mqclient`; fi'
+    - name: Cleaning .bash_profile
+      command: 'sed -i "/export LICENSE=accept/d" /root/.bash_profile'
+      ignore_errors: yes
+#    - name: Remove source from .bash_profile
+#      command: 'sed -i "/source/d" /root/.bash_profile'
+#      ignore_errors: yes
+    - name: Cleaning PATH on .bash_profile
+      shell: sed -i "s/:\/opt\/mqm\/bin:\/opt\/mqm\/samp\/bin//g" /root/.bash_profile
+      ignore_errors: yes
+    - name: Uninstalling MQ 
+      shell: "if rpm -qa | grep MQSeries; then rpm -qa | grep MQSeries | xargs rpm -ev; fi"
+    - name: Cleaning MQ temp file
+      shell: "rm -rf /tmp/mqm/; rm -rf /tmp/mqconfig*"
+    - name: Removing directories
+      shell: "rm -rf /home/mqm; rm -rf /opt/mqm; rm -rf /var/mqm; rm -rf /tmp/mq; rm -rf /etc/mqm"

@@ -1,0 +1,7 @@
+---
+- name: Removing Nodes and Queues 
+  hosts: "{{ varHosts }}"
+  tasks:
+    - name: Run script to remove Nodes and queues 
+      command: "removeNode-Queue.sh"
+      ignore_errors: yes
