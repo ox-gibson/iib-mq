@@ -1,0 +1,23 @@
+#!/bin/bash
+###################################
+#Script Name: stop_node.sh
+#Created By: Prolifics
+###################################
+
+set -e
+
+MQ_QMGR_NAME=${MQ_QMGR_NAME-QM1}
+NODENAME=${NODENAME-IIBV10NODE}
+SERVERNAME=${SERVERNAME-default}
+
+echo "----------------------------------------"
+echo "Stopping node $NODENAME..."
+mqsistop $NODENAME
+echo "----------------------------------------"
+echo "Stopping node $NODENAME..."
+endmqm $MQ_QMGR_NAME
+# Kill the rsyslogd process
+if [ -e /var/run/syslogd.pid ]; then
+	sudo kill $(cat /var/run/syslogd.pid | awk '{ print $1 }')
+fi
+exit
